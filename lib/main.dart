@@ -24,9 +24,16 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Update Stroke class to store color and strokeWidth.
 class Stroke {
   List<Offset> points;
-  Stroke(this.points);
+  Color color;
+  double strokeWidth;
+  Stroke({
+    required this.points,
+    required this.color,
+    required this.strokeWidth,
+  });
 }
 
 class HomePage extends StatefulWidget {
@@ -36,16 +43,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Key for the drawing canvas.
   final GlobalKey _canvasKey = GlobalKey();
   List<Stroke> strokes = [];
   Stroke? currentStroke;
 
-  // Processing state and output result (LaTeX).
   bool isProcessing = false;
   String latexOutput = "";
 
-  /// Captures the drawing, converts it to an image, and sends it for math recognition.
+  // Brush settings: initial color black, brush size 4.0.
+  Color selectedColor = Colors.black;
+  double brushSize = 4.0;
+
   Future<void> recognizeMath() async {
     setState(() {
       isProcessing = true;
@@ -59,7 +67,6 @@ class _HomePageState extends State<HomePage> {
           await image.toByteData(format: ui.ImageByteFormat.png);
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
-      // Send the image to the Python server.
       String responseLatex = await sendImageForMathRecognition(pngBytes);
       setState(() {
         latexOutput = responseLatex;
@@ -74,9 +81,8 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  /// Sends the image bytes to the Python server and returns the recognized LaTeX.
   Future<String> sendImageForMathRecognition(Uint8List imageBytes) async {
-    // Use your local machine’s IP address if testing on a real device.
+    // Update the URL if necessary.
     final url = Uri.parse("http://localhost:5001/recognize_math");
     var request = http.MultipartRequest("POST", url);
     request.files.add(http.MultipartFile.fromBytes(
@@ -103,8 +109,44 @@ class _HomePageState extends State<HomePage> {
       ),
       body: Column(
         children: [
+          // Brush color selection.
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                colorOption(Colors.black),
+                colorOption(Colors.red),
+                colorOption(Colors.blue),
+                colorOption(Colors.green),
+                colorOption(Colors.orange),
+              ],
+            ),
+          ),
+          // Brush size slider.
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                const Text("Brush Size"),
+                Expanded(
+                  child: Slider(
+                    min: 1.0,
+                    max: 20.0,
+                    value: brushSize,
+                    onChanged: (newSize) {
+                      setState(() {
+                        brushSize = newSize;
+                      });
+                    },
+                  ),
+                ),
+                Text(brushSize.toStringAsFixed(1)),
+              ],
+            ),
+          ),
           const SizedBox(height: 10),
-          // Fixed-height drawing canvas with a white background and border.
+          // Drawing canvas.
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),
             width: double.infinity,
@@ -125,7 +167,11 @@ class _HomePageState extends State<HomePage> {
                       localPos.dx <= box.size.width &&
                       localPos.dy <= box.size.height) {
                     setState(() {
-                      currentStroke = Stroke([localPos]);
+                      currentStroke = Stroke(
+                        points: [localPos],
+                        color: selectedColor,
+                        strokeWidth: brushSize,
+                      );
                       strokes.add(currentStroke!);
                     });
                   }
@@ -156,7 +202,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 10),
-          // Buttons to clear the canvas and recognize math.
+          // Buttons.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -189,18 +235,43 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+
+  // Widget to display a selectable color option.
+  Widget colorOption(Color color) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedColor = color;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4.0),
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selectedColor == color ? Colors.black : Colors.transparent,
+            width: 2,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class DrawingPainter extends CustomPainter {
   final List<Stroke> strokes;
   DrawingPainter(this.strokes);
+
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 4.0
-      ..strokeCap = StrokeCap.round;
     for (final stroke in strokes) {
+      final paint = Paint()
+        ..color = stroke.color
+        ..strokeWidth = stroke.strokeWidth
+        ..strokeCap = StrokeCap.round;
       for (int i = 0; i < stroke.points.length - 1; i++) {
         canvas.drawLine(stroke.points[i], stroke.points[i + 1], paint);
       }
