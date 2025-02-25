@@ -3,7 +3,7 @@ import io
 import torch
 import torchvision.transforms as transforms
 from flask import Flask, jsonify, request
-from model import MathRecognizerCNN
+from model import ImprovedMathRecognizerCNN
 from PIL import Image
 
 app = Flask(__name__)
@@ -12,7 +12,7 @@ app = Flask(__name__)
 num_classes = 15
 
 # Instantiate and load the model
-model = MathRecognizerCNN(num_classes=num_classes)
+model = ImprovedMathRecognizerCNN(num_classes=num_classes)
 model.load_state_dict(torch.load("math_recognition_model.pth", map_location=torch.device('cpu')))
 model.eval()
 
