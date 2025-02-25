@@ -21,7 +21,7 @@ def train_model():
     test_loader  = DataLoader(test_dataset, batch_size=1000, shuffle=False)
 
     # Instantiate the improved model (for digits 0–9).
-    model = ImprovedMathRecognizerCNN(num_classes=10)
+    model = ImprovedMathRecognizerCNN(num_classes=15)
     
     # Use Adam optimizer with a lower learning rate.
     optimizer = optim.Adam(model.parameters(), lr=0.001)
